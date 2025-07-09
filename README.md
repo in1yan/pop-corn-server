@@ -1,4 +1,4 @@
-# C Web Server
+# POP corn 🍿Web Server
 
 This is a simple, multi-threaded web server written in C. It's capable of serving static files and handling multiple client connections concurrently.
 
