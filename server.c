@@ -3,14 +3,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/wait.h>
-#include <signal.h>
+#include <threads.h>
 
 #define PORT "6969"
 #define BACKLOG 10
@@ -27,12 +25,13 @@ typedef struct {
 	char path[256];
 	char protocol[20];
 } HeaderData;
-void sigchld_handler(int s){
-	(void)s;
-	int saved_errno = errno;
-	while(waitpid(-1, NULL, WNOHANG)>0);
-	errno = saved_errno;
-}
+
+typedef struct {
+	int sock_fd;
+	char addr[INET6_ADDRSTRLEN];
+} ThreadArgs;
+
+
 
 void *get_in_addr(struct sockaddr *sa){
 	if(sa->sa_family == AF_INET)
@@ -164,12 +163,52 @@ HeaderData * parse_request(char *request){
 	}
 	return result;
 }
+
+int handle_client(void *arg){
+	ThreadArgs *args = (ThreadArgs *)arg;
+	char *request = get_request(args->sock_fd);
+	if(!request){
+		fprintf(stderr, "[%s] Failed to get request\n", args->addr);
+		send_error(args->sock_fd, 400);
+		close(args->sock_fd);
+		free(args);
+		return -1;
+	}
+	// parse the request to determine the html file
+	HeaderData *parsed_request = parse_request(request);
+	if(!parsed_request){
+		fprintf(stderr, "[%s] Failed to parse request\n", args->addr);
+		send_error(args->sock_fd, 400);
+		close(args->sock_fd);
+		free(args);
+		return -1;
+	}
+	char header[256];
+	printf("[ %s ] --> %s %s %s\n", args->addr, parsed_request->method,  parsed_request->path, parsed_request->protocol);
+	// setup the response header
+	FileData *response_header_data = parse_file(parsed_request->path);
+	if(!response_header_data){
+		send_error(args->sock_fd, 404);
+		close(args->sock_fd);
+		free(args);
+		free(parsed_request);
+		return -1;
+	}
+	FILE *template = response_header_data->fd;
+	send_response(args->sock_fd, 200, response_header_data->content_type, response_header_data->content_length);
+	render_html(args->sock_fd, template);
+	shutdown(args->sock_fd, SHUT_WR);
+	fclose(template);
+	close(args->sock_fd);
+	free(parsed_request);
+	free(response_header_data);
+	free(args);
+	return 0;
+}
 int main(){
 	struct sockaddr_storage their_addr;
 	int new_fd;
 	socklen_t sin_size;
-	struct sigaction sa;
-	char s[INET6_ADDRSTRLEN];
 	int numbytes;
 	// socket creation
 	int sockfd = setup_socket();
@@ -181,14 +220,6 @@ int main(){
 		perror("listen");
 		exit(1);
 	}
-	// fork handler
-	sa.sa_handler = sigchld_handler;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	if(sigaction(SIGCHLD, &sa, NULL) == -1){
-		perror("sigaction");
-		exit(1);
-	}
 	printf("Waiting for connections...\n");
 	// start listening to connections
 	while(1){
@@ -198,34 +229,17 @@ int main(){
 			perror("accept");
 			continue;
 		}
-		inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s); // convert network address to presentable
-		if(!fork()){
-			close(sockfd);
-			char *request = get_request(new_fd);
-			if(!request)
-				perror("recv");
-			// parse the request to determine the html file
-			HeaderData *parsed_request = parse_request(request);
-			char header[256];
-			printf("[ %s ] --> %s %s %s\n", s, parsed_request->method,  parsed_request->path, parsed_request->protocol);
-			// setup the response header
-			FileData *response_header_data = parse_file(parsed_request->path);
-			if(!response_header_data){
-				send_error(new_fd, 404);
-				close(new_fd);
-				exit(0);
-			}
-			FILE *template = response_header_data->fd;
-			send_response(new_fd, 200, response_header_data->content_type, response_header_data->content_length);
-			render_html(new_fd, template);
-			shutdown(new_fd, SHUT_WR);
-			fclose(template);
-			close(new_fd);
-			free(parsed_request);
-			free(response_header_data);
-			exit(0);
+		ThreadArgs *args = malloc(sizeof(ThreadArgs));
+		args->sock_fd = new_fd;
+		inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), args->addr, sizeof(  args->addr )); // convert network address to presentable
+		thrd_t t;
+		if ( thrd_create(&t, handle_client, args) != thrd_success ){
+			perror("Failed to create a thread");
+			send_error(new_fd, 500);
+			free(args);
+			continue;
 		}
-		close(new_fd);
+		thrd_detach(t);
 	}
 }
 
