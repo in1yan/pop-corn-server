@@ -1,4 +1,5 @@
 #include "server_utils.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -11,7 +12,7 @@ void *get_in_addr(struct sockaddr *sa){
 
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
-int setup_socket(){
+int setup_socket(char *PORT){
 
 	int sockfd=-1;
 	struct addrinfo hints, *servinfo, *p;
@@ -98,8 +99,11 @@ void send_error(int socket_fd, int status_code){
 	send_response(socket_fd, status_code, "text/html", strlen(body));
 	send(socket_fd, body, strlen(body), 0);
 }
-FileData * parse_file(char *file_name){
-	FILE *fd = fopen(file_name, "r");
+FileData * parse_file(char *file_name, char *root){
+	char *file_path = malloc(strlen(file_name) + strlen(root));
+	snprintf(file_path, strlen(file_name)+strlen(root)+1, "%s%s", root, file_name);
+	printf("%s\n", file_path);
+	FILE *fd = fopen(file_path, "r");
 	if(!fd) return NULL;
 	FileData *result = (FileData *)malloc(sizeof(FileData));
 	fseek(fd, 0, SEEK_END);
@@ -130,14 +134,15 @@ HeaderData * parse_request(char *request){
 	char header[256];
 	if(strcmp(result->path, "/") == 0)
 		strcpy(result->path, "index.html");
-	else{
+	else
 		snprintf(result->path, sizeof(result->path), "%s",result->path+1);
-	}
+	
 	return result;
 }
 
 int handle_client(void *arg){
 	ThreadArgs *args = (ThreadArgs *)arg;
+	char *root = args->root;
 	char *request = get_request(args->sock_fd);
 	if(!request){
 		fprintf(stderr, "[%s] Failed to get request\n", args->addr);
@@ -158,7 +163,7 @@ int handle_client(void *arg){
 	char header[256];
 	printf("[ %s ] --> %s %s %s\n", args->addr, parsed_request->method,  parsed_request->path, parsed_request->protocol);
 	// setup the response header
-	FileData *response_header_data = parse_file(parsed_request->path);
+	FileData *response_header_data = parse_file(parsed_request->path, root);
 	if(!response_header_data){
 		send_error(args->sock_fd, 404);
 		close(args->sock_fd);
@@ -176,4 +181,28 @@ int handle_client(void *arg){
 	free(response_header_data);
 	free(args);
 	return 0;
+}
+
+Configs *parse_config(){
+	FILE *config_file = fopen("./config.json", "r");
+	Configs *config = (Configs *)malloc(sizeof(Configs));
+	if (config_file == NULL){
+		perror("config file");
+		return NULL;
+	}
+	char buffer[1024];
+	int len = fread(buffer, 1, sizeof(buffer), config_file);
+	cJSON *json = cJSON_Parse(buffer);
+	cJSON *port = cJSON_GetObjectItemCaseSensitive(json, "port");
+	cJSON *backlog = cJSON_GetObjectItemCaseSensitive(json, "backlog");
+	cJSON *root = cJSON_GetObjectItemCaseSensitive(json, "root");
+	if(port->valuestring != NULL)
+		strcpy(config->port, port->valuestring);	
+	if(backlog->valueint >1)
+		config->backlog = backlog->valueint;
+	if(root->valuestring != NULL)
+		config->root = root->valuestring;
+	else
+		return NULL;
+	return config;	
 }
