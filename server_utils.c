@@ -99,32 +99,55 @@ void send_error(int socket_fd, int status_code){
 	send_response(socket_fd, status_code, "text/html", strlen(body));
 	send(socket_fd, body, strlen(body), 0);
 }
-FileData * parse_file(char *file_name, char *root){
-	char *file_path = malloc(strlen(file_name) + strlen(root));
-	snprintf(file_path, strlen(file_name)+strlen(root)+1, "%s%s", root, file_name);
-	printf("%s\n", file_path);
+FileData *parse_file(char *file_name, char *root) {
+	if(strstr(file_name, "..")){
+		return NULL;
+	}
+	size_t path_len = strlen(root) + strlen(file_name) + strlen("/index.html") + 1;
+	char *file_path = malloc(path_len);
+	if (!file_path) return NULL;
+
+	snprintf(file_path, path_len, "%s%s", root, file_name);
 	FILE *fd = fopen(file_path, "r");
-	if(!fd) return NULL;
-	FileData *result = (FileData *)malloc(sizeof(FileData));
-	fseek(fd, 0, SEEK_END);
-	long int content_length = ftell(fd);
-	fseek(fd, 0, SEEK_SET);
 	char *ext = strrchr(file_name, '.');
-	char *mime;
-	if(!ext) mime= "application/octet-stream";
-	else if(strcmp(ext, ".html") == 0)  mime = "text/html";
-	else if(strcmp(ext, ".css") == 0) mime= "text/css";
-	else if(strcmp(ext, ".js") == 0) mime= "application/javascript";
-	else if(strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) mime= "image/jpeg";
-	else if(strcmp(ext, ".png") == 0) mime= "image/png";
-	else if(strcmp(ext, ".webp") == 0) mime= "image/webp";
-	else if(strcmp(ext, ".gif") == 0) mime= "image/gif";
-	else mime = "application/octet-stream";
-	result->content_length = content_length;
+	if (!ext) {
+		snprintf(file_path, path_len, "%s%s/index.html", root, file_name);
+		fd = fopen(file_path, "r");
+		if (!fd) {
+			free(file_path);
+			return NULL;
+		}
+	}
+	ext = strrchr(file_path, '.');
+	printf("Serving: %s  ext: %s\n", file_path, ext);
+	FileData *result = malloc(sizeof(FileData));
+	if (!result) {
+		fclose(fd);
+		free(file_path);
+		return NULL;
+	}
+
+	fseek(fd, 0, SEEK_END);
+	result->content_length = ftell(fd);
+	fseek(fd, 0, SEEK_SET);
 	result->fd = fd;
+
+	char *mime;
+	if (!ext) mime = "application/octet-stream";
+	else if (strcmp(ext, ".html") == 0) mime = "text/html";
+	else if (strcmp(ext, ".css") == 0) mime = "text/css";
+	else if (strcmp(ext, ".js") == 0) mime = "application/javascript";
+	else if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) mime = "image/jpeg";
+	else if (strcmp(ext, ".png") == 0) mime = "image/png";
+	else if (strcmp(ext, ".webp") == 0) mime = "image/webp";
+	else if (strcmp(ext, ".gif") == 0) mime = "image/gif";
+	else mime = "application/octet-stream";
+
 	result->content_type = mime;
+	free(file_path);
 	return result;
 }
+
 
 HeaderData * parse_request(char *request){
 	HeaderData *result = (HeaderData *)malloc(sizeof(HeaderData));
