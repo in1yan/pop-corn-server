@@ -1,54 +1,55 @@
-# POP corn 🍿Web Server
+# C Web Server
 
-This is a simple, multi-threaded web server written in C. It's capable of serving static files and handling multiple client connections concurrently.
-
-## Core Components
-
-- `server.c`: The main entry point of the application. It sets up the socket, listens for incoming connections, and spawns a new thread to handle each client.
-- `server_utils.c`: Contains the core logic for handling HTTP requests, parsing headers, serving files, and managing responses.
-- `server_utils.h`: The header file for `server_utils.c`, defining the data structures and function prototypes used throughout the application.
+This is a simple, multi-threaded web server written in C. It's capable of serving static files and handling multiple simultaneous connections.
 
 ## Features
 
-- **Multi-threaded:** Each client connection is handled in a separate thread, allowing the server to manage multiple requests simultaneously.
-- **Static File Serving:** The server can serve various file types, including HTML, CSS, JavaScript, and images (JPEG, PNG, GIF, WebP).
-- **HTTP/1.1 Compliant:** The server follows the basic structure of HTTP/1.1 for requests and responses.
-- **Error Handling:** The server provides appropriate HTTP error codes for common issues like "404 Not Found" and "500 Internal Server Error."
+- **Multi-threaded:** Handles multiple clients concurrently using POSIX threads.
+- **Static File Serving:** Serves static files (HTML, CSS, JavaScript, images, etc.).
+- **Configuration:** Uses a `config.json` file for easy configuration of port, backlog, and root directory.
+- **MIME Type Support:**  Correctly identifies and serves common file types with the appropriate MIME types.
+- **Error Handling:**  Sends appropriate HTTP error codes (400, 404, 500) to the client.
+
+## Dependencies
+
+- **cJSON:** Used for parsing the `config.json` file. The source code for cJSON is included in the `cjson` directory.
 
 ## How to Compile and Run
 
-1.  **Compile the code:**
-
+1.  **Compile:**
     ```bash
-    gcc -o server.out server.c server_utils.c -lpthread
+    gcc -o server.out server.c server_utils.c cjson/cJSON.c -lpthread
     ```
 
-2.  **Run the server:**
+2.  **Configure:**
+    Create a `config.json` file in the same directory with the following format:
+    ```json
+    {
+      "port": "8080",
+      "backlog": 10,
+      "root": "./public"
+    }
+    ```
+    - `port`: The port number for the server to listen on.
+    - `backlog`: The maximum number of pending connections.
+    - `root`: The root directory from which to serve files.
 
+3.  **Run:**
     ```bash
     ./server.out
     ```
 
-By default, the server listens on port `6969`. You can access it by navigating to `http://localhost:6969` in your web browser.
+The server will then be running and listening for connections on the specified port.
 
-## Key Functions
+## Code Structure
 
-### `server.c`
-
-- **`main()`**: Initializes the server, binds it to a port, and enters an infinite loop to accept and handle incoming connections.
-
-### `server_utils.c`
-
-- **`handle_client(void *arg)`**: The main function for handling a client connection. It reads the request, parses it, and sends the appropriate response.
-- **`setup_socket()`**: Configures and binds the server's socket to listen for connections.
-- **`parse_request(char *request)`**: Parses the client's HTTP request to extract the method, path, and protocol.
-- **`parse_file(char *file_name)`**: Opens the requested file and retrieves its metadata, such as content type and length.
-- **`send_response(...)`**: Constructs and sends the HTTP response header to the client.
-- **`render_html(...)`**: Streams the content of the requested file to the client.
-- **`send_error(...)`**: Sends an HTTP error response to the client.
-
-## Data Structures
-
-- **`FileData`**: Holds information about a file, including its descriptor, content length, and MIME type.
-- **`HeaderData`**: Stores the parsed components of an HTTP request header.
-- **`ThreadArgs`**: Contains the arguments passed to each client-handling thread, including the socket descriptor and client's IP address.
+- **`server.c`:** The main entry point of the application. It sets up the socket, listens for incoming connections, and creates a new thread to handle each client.
+- **`server_utils.h`:** Header file for the server utility functions.
+- **`server_utils.c`:** Contains helper functions for the server, including:
+    - Socket setup and configuration.
+    - Request parsing.
+    - Response generation.
+    - File handling and MIME type detection.
+- **`cjson/`:** Contains the cJSON library for parsing JSON.
+- **`public/`:**  The default root directory for serving static files.
+- **`config.json`:** Configuration file for the server.
