@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About - Pop Corn Server</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fdfdfd;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      margin-left: 20px;
+    }
+    nav a:hover {
+      text-decoration: underline;
+    }
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2rem;
+    }
+    p {
+      line-height: 1.6;
+    }
+    code {
+      background-color: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>🍿 Pop Corn Server</div>
+    <nav>
+      <a href="/index.html">Home</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </header>
+  <div class="container">
+    <h1>About This Server</h1>
+    <p>
+      This static site is served using a custom web server written in <code>C</code> from scratch. It supports file-based routing,
+      multithreading with <code>thrd_create</code>, and minimal HTTP parsing.
+    </p>
+    <p>
+      The server is called <strong>Pop Corn Server</strong> and it's a personal project built for fun and learning. It’s capable of
+      handling concurrent requests, parsing basic HTTP headers, and serving static content like HTML, CSS, JS, and images.
+    </p>
+    <p>
+      This instance is hosted on <a href="https://www.koyeb.com" target="_blank">Koyeb</a>, a fast and developer-friendly platform
+      for hosting lightweight apps and services.
+    </p>
+    <p>
+      You can view the source code on GitHub here:
+      <a href="https://github.com/in1yan/pop-corn-server" target="_blank">github.com/in1yan/pop-corn-server</a>
+    </p>
+    <p>
+      Feel free to explore the site and check how simple static routing works behind the scenes!
+    </p>
+  </div>
+</body>
+</html>
+
