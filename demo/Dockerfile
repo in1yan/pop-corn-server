@@ -15,7 +15,7 @@ COPY . .
 RUN chmod +x server.out
 
 # Expose port (must match config.json)
-EXPOSE 8080
+EXPOSE 8888
 
 # Start the server
 CMD ["./server.out"]
