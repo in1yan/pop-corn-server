@@ -120,6 +120,7 @@ FileData *parse_file(char *file_name, char *root) {
 	}
 	ext = strrchr(file_path, '.');
 	printf("Serving: %s  ext: %s\n", file_path, ext);
+	fflush(stdout);
 	FileData *result = malloc(sizeof(FileData));
 	if (!result) {
 		fclose(fd);
@@ -185,6 +186,7 @@ int handle_client(void *arg){
 	}
 	char header[256];
 	printf("[ %s ] --> %s %s %s\n", args->addr, parsed_request->method,  parsed_request->path, parsed_request->protocol);
+	fflush(stdout);
 	// setup the response header
 	FileData *response_header_data = parse_file(parsed_request->path, root);
 	if(!response_header_data){
