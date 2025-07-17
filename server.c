@@ -31,6 +31,7 @@ int main(){
 		exit(1);
 	}
 	printf("Waiting for connections...\n");
+	fflush(stdout);
 	// start listening to connections
 	while(1){
 		sin_size = sizeof their_addr;
