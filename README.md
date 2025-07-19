@@ -1,4 +1,4 @@
-# C Web Server
+# 🍿 web server
 
 This is a simple, multi-threaded web server written in C. It's capable of serving static files and handling multiple simultaneous connections.
 
